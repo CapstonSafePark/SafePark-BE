@@ -1,23 +1,27 @@
 package com.safepark.repository;
 
 import com.safepark.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
-@Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    // username으로 사용자 찾기
     Optional<User> findByUsername(String username);
 
-    // email로 사용자 찾기
     Optional<User> findByEmail(String email);
 
-    // username 중복 체크
-    boolean existsByUsername(String username);
+    // 중복 체크 메서드 추가
+    boolean existsByUsername(String username);  // 추가!
 
-    // email 중복 체크
-    boolean existsByEmail(String email);
+    boolean existsByEmail(String email);  // 추가!
+
+    // Pagination + 검색
+    Page<User> findByUsernameContainingOrEmailContaining(
+            String username,
+            String email,
+            Pageable pageable
+    );
 }

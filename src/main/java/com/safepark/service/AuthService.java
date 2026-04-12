@@ -17,7 +17,6 @@ import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class AuthService {
 
     private final UserRepository userRepository;
@@ -25,88 +24,85 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
 
-    // 회원가입
+    @Transactional
     public AuthResponse register(RegisterRequest request) {
-        // 중복 체크
+        // 중복 검사
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("이미 사용 중인 아이디입니다");
+            throw new RuntimeException("이미 존재하는 사용자명입니다");
         }
+
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("이미 사용 중인 이메일입니다");
+            throw new RuntimeException("이미 존재하는 이메일입니다");
         }
 
         // 사용자 생성
-        User user = User.builder()
-                .username(request.getUsername())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .name(request.getName())
-                .phone(request.getPhone())
-                .role("USER")
-                .build();
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setName(request.getName());
+        user.setPhone(request.getPhone());
+        user.setRole("USER");
 
         User savedUser = userRepository.save(user);
 
-        // 토큰 생성
-        String accessToken = jwtTokenProvider.createAccessToken(savedUser.getUsername());
-        String refreshToken = jwtTokenProvider.createRefreshToken(savedUser.getUsername());
+        // JWT 토큰 생성
+        String accessToken = jwtTokenProvider.generateAccessToken(savedUser.getUsername());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(savedUser.getUsername());
 
         // Refresh Token 저장
-        saveRefreshToken(savedUser, refreshToken);
+        RefreshToken refreshTokenEntity = new RefreshToken();
+        refreshTokenEntity.setUserId(savedUser.getId());
+        refreshTokenEntity.setToken(refreshToken);
+        refreshTokenEntity.setExpiresAt(LocalDateTime.now().plusDays(7));
+        refreshTokenRepository.save(refreshTokenEntity);
 
         // 응답 생성
-        return AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .tokenType("Bearer")
-                .userId(savedUser.getId())
-                .username(savedUser.getUsername())
-                .email(savedUser.getEmail())
-                .name(savedUser.getName())
-                .role(savedUser.getRole())
-                .build();
+        return new AuthResponse(
+                accessToken,
+                refreshToken,
+                savedUser.getId(),
+                savedUser.getUsername(),
+                savedUser.getEmail(),
+                savedUser.getName(),
+                savedUser.getRole()
+        );
     }
 
-    // 로그인
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         // 사용자 조회
         User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new RuntimeException("아이디 또는 비밀번호가 일치하지 않습니다"));
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
 
-        // 비밀번호 확인
+        // 비밀번호 검증
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("아이디 또는 비밀번호가 일치하지 않습니다");
+            throw new RuntimeException("비밀번호가 일치하지 않습니다");
         }
 
-        // 토큰 생성
-        String accessToken = jwtTokenProvider.createAccessToken(user.getUsername());
-        String refreshToken = jwtTokenProvider.createRefreshToken(user.getUsername());
+        // JWT 토큰 생성
+        String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getUsername());
 
-        // 기존 Refresh Token 삭제 후 새로 저장
-        refreshTokenRepository.deleteByUser(user);
-        saveRefreshToken(user, refreshToken);
+        // 기존 Refresh Token 삭제
+        refreshTokenRepository.deleteByUserId(user.getId());
+
+        // 새로운 Refresh Token 저장
+        RefreshToken refreshTokenEntity = new RefreshToken();
+        refreshTokenEntity.setUserId(user.getId());
+        refreshTokenEntity.setToken(refreshToken);
+        refreshTokenEntity.setExpiresAt(LocalDateTime.now().plusDays(7));
+        refreshTokenRepository.save(refreshTokenEntity);
 
         // 응답 생성
-        return AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .tokenType("Bearer")
-                .userId(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .name(user.getName())
-                .role(user.getRole())
-                .build();
-    }
-
-    // Refresh Token 저장
-    private void saveRefreshToken(User user, String token) {
-        RefreshToken refreshToken = RefreshToken.builder()
-                .user(user)
-                .token(token)
-                .expiresAt(LocalDateTime.now().plusDays(7))
-                .build();
-
-        refreshTokenRepository.save(refreshToken);
+        return new AuthResponse(
+                accessToken,
+                refreshToken,
+                user.getId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getName(),
+                user.getRole()
+        );
     }
 }

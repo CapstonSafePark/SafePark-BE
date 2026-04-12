@@ -6,57 +6,55 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
 
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+        try {
+            String token = getJwtFromRequest(request);
 
-        // Authorization 헤더에서 토큰 추출
-        String token = getTokenFromRequest(request);
+            if (token != null && jwtTokenProvider.validateToken(token)) {
+                String username = jwtTokenProvider.getUsernameFromToken(token);  // 변경!
 
-        // 토큰이 있고 유효하면
-        if (token != null && jwtTokenProvider.validateToken(token)) {
-            // 토큰에서 사용자명 추출
-            String username = jwtTokenProvider.getUsername(token);
+                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        );
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-            // 인증 객체 생성 (권한은 나중에 DB에서 조회 가능)
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(
-                            username,
-                            null,
-                            Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"))
-                    );
-
-            // SecurityContext에 인증 정보 저장
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
+        } catch (Exception e) {
+            logger.error("Could not set user authentication in security context", e);
         }
 
-        // 다음 필터로 진행
         filterChain.doFilter(request, response);
     }
 
-    // Request에서 토큰 추출
-    private String getTokenFromRequest(HttpServletRequest request) {
+    private String getJwtFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
-
         if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7);
         }
-
         return null;
     }
 }

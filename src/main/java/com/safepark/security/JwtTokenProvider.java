@@ -1,65 +1,62 @@
 package com.safepark.security;
 
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
-@Slf4j
 @Component
 public class JwtTokenProvider {
 
-    private final SecretKey secretKey;
-    private final long accessTokenValidity;
-    private final long refreshTokenValidity;
+    @Value("${jwt.secret}")
+    private String secretKey;
 
-    public JwtTokenProvider(
-            @Value("${jwt.secret}") String secret,
-            @Value("${jwt.access-token-validity}") long accessTokenValidity,
-            @Value("${jwt.refresh-token-validity}") long refreshTokenValidity
-    ) {
-        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.accessTokenValidity = accessTokenValidity;
-        this.refreshTokenValidity = refreshTokenValidity;
+    @Value("${jwt.access-token-validity}")
+    private long accessTokenValidity;
+
+    @Value("${jwt.refresh-token-validity}")
+    private long refreshTokenValidity;
+
+    // SecretKey 생성
+    private SecretKey getSigningKey() {
+        return Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
     // Access Token 생성
-    public String createAccessToken(String username) {
+    public String generateAccessToken(String username) {
         Date now = new Date();
-        Date validity = new Date(now.getTime() + accessTokenValidity);
+        Date expiryDate = new Date(now.getTime() + accessTokenValidity);
 
         return Jwts.builder()
                 .subject(username)
                 .issuedAt(now)
-                .expiration(validity)
-                .signWith(secretKey)
+                .expiration(expiryDate)
+                .signWith(getSigningKey())
                 .compact();
     }
 
     // Refresh Token 생성
-    public String createRefreshToken(String username) {
+    public String generateRefreshToken(String username) {
         Date now = new Date();
-        Date validity = new Date(now.getTime() + refreshTokenValidity);
+        Date expiryDate = new Date(now.getTime() + refreshTokenValidity);
 
         return Jwts.builder()
                 .subject(username)
                 .issuedAt(now)
-                .expiration(validity)
-                .signWith(secretKey)
+                .expiration(expiryDate)
+                .signWith(getSigningKey())
                 .compact();
     }
 
     // 토큰에서 username 추출
-    public String getUsername(String token) {
+    public String getUsernameFromToken(String token) {
         return Jwts.parser()
-                .verifyWith(secretKey)
+                .verifyWith(getSigningKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload()
@@ -70,12 +67,11 @@ public class JwtTokenProvider {
     public boolean validateToken(String token) {
         try {
             Jwts.parser()
-                    .verifyWith(secretKey)
+                    .verifyWith(getSigningKey())
                     .build()
                     .parseSignedClaims(token);
             return true;
-        } catch (JwtException | IllegalArgumentException e) {
-            log.error("Invalid JWT token: {}", e.getMessage());
+        } catch (Exception e) {
             return false;
         }
     }

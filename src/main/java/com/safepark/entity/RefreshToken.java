@@ -2,7 +2,6 @@ package com.safepark.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
@@ -15,7 +14,6 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 @EntityListeners(AuditingEntityListener.class)
 public class RefreshToken {
 
@@ -23,17 +21,16 @@ public class RefreshToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;  // 필수!
 
     @Column(nullable = false, unique = true, length = 500)
-    private String token;  // Refresh Token 값
+    private String token;
 
-    @Column(nullable = false)
-    private LocalDateTime expiresAt;  // 만료 시간
+    @Column(name = "expires_at", nullable = false)
+    private LocalDateTime expiresAt;
 
     @CreatedDate
-    @Column(updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 }
