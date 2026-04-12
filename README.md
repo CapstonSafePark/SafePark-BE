@@ -49,6 +49,18 @@ spring.datasource.password=your_password
 서버: `http://localhost:8080`
 
 ---
+## CORS 설정
+
+프론트엔드 연동을 위한 CORS 설정 완료
+
+**허용된 Origin:**
+- `http://localhost:3000` (React 개발 서버)
+- `http://localhost:3001` (추가 포트)
+
+**허용된 메서드:** GET, POST, PUT, DELETE
+**허용된 헤더:** 모두 허용
+
+---
 
 ## 진행 상황
 
