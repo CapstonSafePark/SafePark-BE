@@ -1,29 +1,48 @@
 package com.safepark.repository;
 
 import com.safepark.entity.AnalysisLog;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Repository
 public interface AnalysisLogRepository extends JpaRepository<AnalysisLog, Long> {
 
-    // 위험도별 카운트
-    long countByRiskLevel(String riskLevel);
+    // 사용자별 분석 이력 조회 (페이징)
+    Page<AnalysisLog> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
-    // 오늘 활동한 사용자 수
-    @Query("SELECT COUNT(DISTINCT a.userId) FROM AnalysisLog a WHERE a.createdAt >= :startDate")
-    long countDistinctUsersByCreatedAtAfter(LocalDateTime startDate);
+    // 사용자별 분석 이력 조회 (전체)
+    List<AnalysisLog> findByUserIdOrderByCreatedAtDesc(Long userId);
 
-    // 최근 분석 기록 10개
+    // 사용자별 분석 건수
+    Long countByUserId(Long userId);
+
+    // 사용자별 위험도별 건수
+    Long countByUserIdAndRiskLevel(Long userId, String riskLevel);
+
+    // 전체 통계용 메서드들 (기존에 있던 것들)
+    Long countByRiskLevel(String riskLevel);
+
+    Long countDistinctUsersByCreatedAtAfter(LocalDateTime date);
+
     List<AnalysisLog> findTop10ByOrderByCreatedAtDesc();
 
-    // 사용자별 분석 통계
-    long countByUserId(Long userId);
+    // 특정 기간 내 분석 이력
+    List<AnalysisLog> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
-    long countByUserIdAndRiskLevel(Long userId, String riskLevel);
 
-    // 사용자의 최근 분석 기록
-    AnalysisLog findFirstByUserIdOrderByCreatedAtDesc(Long userId);
+    // 사용자의 모든 분석 이력 삭제
+    void deleteByUserId(Long userId);
+
+    Optional<AnalysisLog> findFirstByUserIdOrderByCreatedAtDesc(Long userId);
+
+    // 날짜 필터 포함 페이징 조회
+    Page<AnalysisLog> findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(
+            Long userId, LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
 }

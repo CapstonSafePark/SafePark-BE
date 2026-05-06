@@ -78,7 +78,7 @@ public class AdminController {
         long lowRiskCount = analysisLogRepository.countByUserIdAndRiskLevel(id, "LOW");
 
         // 최근 분석 날짜
-        AnalysisLog lastAnalysis = analysisLogRepository.findFirstByUserIdOrderByCreatedAtDesc(id);
+        AnalysisLog lastAnalysis = analysisLogRepository.findFirstByUserIdOrderByCreatedAtDesc(id).orElse(null);
         LocalDateTime lastAnalysisDate = lastAnalysis != null ? lastAnalysis.getCreatedAt() : null;
 
         // Statistics 객체 구성

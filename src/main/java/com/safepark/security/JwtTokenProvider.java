@@ -74,5 +74,19 @@ public class JwtTokenProvider {
         } catch (Exception e) {
             return false;
         }
+
     }
+    public Long getUserIdFromToken(String token) {
+        String subject = Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getSubject();
+
+        // 주의: 토큰의 subject가 "taewoong" 같은 문자열이면 여기서 에러가 날 수 있습니다.
+        // 숫자 ID(ex: "1")가 들어있어야 정상 작동합니다.
+        return Long.parseLong(subject);
+    }
+
 }
