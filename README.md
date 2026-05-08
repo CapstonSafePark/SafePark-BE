@@ -37,6 +37,10 @@ AI 기반 주정차 과태료 예측 및 주차 대안 추천 서비스 - 백엔
 - `DELETE /api/history/{historyId}` - 분석 이력 삭제
 - `DELETE /api/history/all` - 전체 분석 이력 삭제
 
+### AI 챗봇 API- `POST /api/chatbot/message` - 챗봇 메시지 전송
+- `GET /api/chatbot/history` - 대화 내역 조회 (param: limit)
+- `DELETE /api/chatbot/history` - 대화 이력 삭제
+
 ### 관리자 API- `GET /api/admin/users` - 사용자 목록 조회 (param: page, limit, searchKeyword)
 - `GET /api/admin/users/{id}` - 사용자 상세 조회
 - `GET /api/admin/statistics` - 통계 조회
