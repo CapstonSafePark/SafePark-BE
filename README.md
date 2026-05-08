@@ -14,41 +14,34 @@ AI 기반 주정차 과태료 예측 및 주차 대안 추천 서비스 - 백엔
 
 ## 완성된 API
 
-### 인증 API (담당: 선태웅)
-- `POST /api/auth/register` - 회원가입
+### 인증 API- `POST /api/auth/register` - 회원가입
 - `POST /api/auth/login` - 로그인
 - `POST /api/auth/logout` - 로그아웃
 - `POST /api/auth/refresh` - 토큰 갱신
 
-### 내 계정 API (담당: 선태웅)
-- `GET /api/users/me` - 내 정보 조회
+### 내 계정 API- `GET /api/users/me` - 내 정보 조회
 - `PUT /api/users/me` - 내 정보 수정 (name, phone)
 - `PUT /api/users/me/password` - 비밀번호 변경
 - `DELETE /api/users/me` - 회원 탈퇴
 
-### 지도 및 위치 API (담당: 선태웅)
-- `POST /api/location/check-parking` - 현재 위치 주차 가능 여부 및 위험도 분석
+### 지도 및 위치 API- `POST /api/location/check-parking` - 현재 위치 주차 가능 여부 및 위험도 분석
 - `GET /api/parking-lots/nearby` - 주변 주차장 검색 (param: latitude, longitude, radius)
 - `GET /api/parking-lots/{id}` - 주차장 상세 정보
 
-### 이미지 분석 API (담당: 선태웅)
-- `POST /api/analysis/upload-image` - 주차위반 이미지 업로드 및 분석
+### 이미지 분석 API- `POST /api/analysis/upload-image` - 주차위반 이미지 업로드 및 분석
 - `GET /api/analysis/{analysisId}` - 분석 결과 상세 조회
 - `GET /api/analysis/recent` - 최근 분석 결과 목록 (param: limit)
 
-### 분석 이력 API (담당: 선태웅)
-- `GET /api/history` - 분석 이력 목록 조회 (param: page, limit, startDate, endDate)
+### 분석 이력 API- `GET /api/history` - 분석 이력 목록 조회 (param: page, limit, startDate, endDate)
 - `GET /api/history/{historyId}` - 분석 이력 상세 조회
 - `DELETE /api/history/{historyId}` - 분석 이력 삭제
 - `DELETE /api/history/all` - 전체 분석 이력 삭제
 
-### AI 챗봇 API (담당: 선태웅)
-- `POST /api/chatbot/message` - 챗봇 메시지 전송
+### AI 챗봇 API- `POST /api/chatbot/message` - 챗봇 메시지 전송
 - `GET /api/chatbot/history` - 대화 내역 조회 (param: limit)
 - `DELETE /api/chatbot/history` - 대화 이력 삭제
 
-### 관리자 API (담당: 선태웅)
-- `GET /api/admin/users` - 사용자 목록 조회 (param: page, limit, searchKeyword)
+### 관리자 API- `GET /api/admin/users` - 사용자 목록 조회 (param: page, limit, searchKeyword)
 - `GET /api/admin/users/{id}` - 사용자 상세 조회
 - `GET /api/admin/statistics` - 통계 조회
 - `POST /api/admin/parking-lots` - 주차장 등록
