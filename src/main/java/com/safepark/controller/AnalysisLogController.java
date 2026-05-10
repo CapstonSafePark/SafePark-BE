@@ -212,16 +212,16 @@ public class AnalysisLogController {
 
             AnalysisLog saved = analysisLogRepository.save(log);
 
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "data", Map.of(
-                            "analysisId", saved.getId(),
-                            "imagePath", saved.getImagePath(),
-                            "riskLevel", saved.getRiskLevel(),
-                            "probability", saved.getProbability(),
-                            "result", saved.getResult()
-                    )
-            ));
+            Map<String, Object> data = new java.util.HashMap<>();
+            data.put("analysisId", saved.getId());
+            data.put("imagePath", saved.getImagePath());
+            data.put("riskLevel", saved.getRiskLevel());
+            data.put("probability", saved.getProbability());
+            data.put("result", saved.getResult());
+            data.put("lineColor", saved.getLineColor());
+            data.put("reasoning", saved.getReasoning());
+
+            return ResponseEntity.ok(Map.of("success", true, "data", data));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
         }
