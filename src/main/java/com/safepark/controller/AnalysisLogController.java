@@ -122,6 +122,26 @@ public class AnalysisLogController {
         }
     }
 
+    /**
+     * 분석 이력 목록 조회 (FE 호환용)
+     * GET /api/analysis/history
+     */
+    @GetMapping("/history")
+    public ResponseEntity<?> getAnalysisHistory(
+            @RequestHeader("Authorization") String token
+    ) {
+        try {
+            User user = getUserFromToken(token);
+            List<AnalysisLog> logs = analysisLogRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+            List<AnalysisLogResponse> result = logs.stream()
+                    .map(AnalysisLogResponse::fromEntitySimple)
+                    .toList();
+            return ResponseEntity.ok(Map.of("success", true, "data", result));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
     private User getUserFromToken(String token) {
         String jwt = token.replace("Bearer ", "");
         String username = jwtTokenProvider.getUsernameFromToken(jwt);

@@ -97,6 +97,8 @@ public class AnalysisLogResponse {
         response.setImagePath(log.getImagePath());
         response.setProbability(log.getProbability());
         response.setRiskLevel(log.getRiskLevel());
+        response.setReasoning(log.getReasoning());
+        response.setLineColor(log.getLineColor());
         response.setCreatedAt(log.getCreatedAt());
 
         return response;
