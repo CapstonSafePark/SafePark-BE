@@ -6,6 +6,7 @@ import com.safepark.entity.User;
 import com.safepark.repository.AnalysisLogRepository;
 import com.safepark.repository.UserRepository;
 import com.safepark.security.JwtTokenProvider;
+import com.safepark.service.DsAnalysisService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +25,7 @@ public class AnalysisLogController {
     private final AnalysisLogRepository analysisLogRepository;
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final DsAnalysisService dsAnalysisService;
 
     /**
      * 주차위반 이미지 업로드 및 분석
@@ -40,22 +42,33 @@ public class AnalysisLogController {
         try {
             User user = getUserFromToken(token);
 
-            // 이미지 저장
-            String uploadDir = "uploads/analysis/";
+            // 이미지 저장 (절대경로 사용)
+            String uploadDir = System.getProperty("user.dir") + "/uploads/analysis/";
             new File(uploadDir).mkdirs();
             String fileName = System.currentTimeMillis() + "_" + image.getOriginalFilename();
             String imagePath = uploadDir + fileName;
-            image.transferTo(new File(imagePath));
+            File savedFile = new File(imagePath);
+            image.transferTo(savedFile);
 
-            // 분석 로그 생성 (AI 분석 결과는 별도 서비스에서 처리)
+            // DS 모델에 이미지 분석 요청
+            Map<String, Object> dsResult = dsAnalysisService.analyzeImage(savedFile);
+
+            String lineColor = (String) dsResult.get("lineColor");
+            String riskLevel = (String) dsResult.get("riskLevel");
+            int probability = (int) dsResult.get("probability");
+            String reasoning = (String) dsResult.get("reasoning");
+
+            // 분석 로그 생성 (DS 모델 분석 결과 반영)
             AnalysisLog log = new AnalysisLog();
             log.setUserId(user.getId());
             log.setReqLat(latitude);
             log.setReqLng(longitude);
             log.setImagePath(imagePath);
-            log.setRiskLevel("MEDIUM");   // AI 분석 전 임시값
-            log.setProbability(50);       // AI 분석 전 임시값
-            log.setResult("분석 대기 중");
+            log.setRiskLevel(riskLevel);
+            log.setProbability(probability);
+            log.setLineColor(lineColor);
+            log.setReasoning(reasoning);
+            log.setResult("분석 완료");
 
             AnalysisLog saved = analysisLogRepository.save(log);
 
@@ -64,6 +77,10 @@ public class AnalysisLogController {
                     "data", Map.of(
                             "analysisId", saved.getId(),
                             "imagePath", saved.getImagePath(),
+                            "probability", saved.getProbability(),
+                            "riskLevel", saved.getRiskLevel(),
+                            "lineColor", saved.getLineColor(),
+                            "reasoning", saved.getReasoning(),
                             "status", "분석 완료",
                             "message", "이미지가 업로드되었습니다. 분석 결과를 확인하세요."
                     )
