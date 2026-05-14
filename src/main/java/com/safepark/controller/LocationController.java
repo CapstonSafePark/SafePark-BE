@@ -1,9 +1,14 @@
 package com.safepark.controller;
 
+import com.safepark.entity.AnalysisLog;
 import com.safepark.entity.CrackZone;
 import com.safepark.entity.ParkingLot;
+import com.safepark.entity.User;
+import com.safepark.repository.AnalysisLogRepository;
 import com.safepark.repository.CrackZoneRepository;
 import com.safepark.repository.ParkingLotRepository;
+import com.safepark.repository.UserRepository;
+import com.safepark.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +24,9 @@ public class LocationController {
 
     private final CrackZoneRepository crackZoneRepository;
     private final ParkingLotRepository parkingLotRepository;
+    private final AnalysisLogRepository analysisLogRepository;
+    private final UserRepository userRepository;
+    private final JwtTokenProvider jwtTokenProvider;
 
     /**
      * 현재 위치 주차 가능 여부 확인
@@ -26,7 +34,9 @@ public class LocationController {
      * body: { latitude, longitude, address }
      */
     @PostMapping("/check-parking")
-    public ResponseEntity<?> checkParking(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<?> checkParking(
+            @RequestHeader(value = "Authorization", required = false) String token,
+            @RequestBody Map<String, Object> request) {
         try {
             float latitude = Float.parseFloat(request.get("latitude").toString());
             float longitude = Float.parseFloat(request.get("longitude").toString());
@@ -41,18 +51,24 @@ public class LocationController {
             // 위험도 계산
             String riskLevel;
             int probability;
+            String reasoning;
             if (!nearbyZones.isEmpty()) {
                 CrackZone closestZone = nearbyZones.get(0);
                 if ("스쿨존".equals(closestZone.getZoneType()) || "버스정류장".equals(closestZone.getZoneType())) {
                     riskLevel = "HIGH";
                     probability = 90;
+                    reasoning = String.format("반경 100m 내 %s(%s) 단속구역이 존재합니다. 과태료 확률이 매우 높습니다.",
+                            closestZone.getZoneType(), closestZone.getZoneName());
                 } else {
                     riskLevel = "MEDIUM";
                     probability = 60;
+                    reasoning = String.format("반경 100m 내 %s(%s) 단속구역이 존재합니다. 주의가 필요합니다.",
+                            closestZone.getZoneType(), closestZone.getZoneName());
                 }
             } else {
                 riskLevel = "LOW";
                 probability = 10;
+                reasoning = "반경 100m 내 단속구역이 확인되지 않았습니다. 주차 가능성이 높습니다.";
             }
 
             // 단속구역 정보 변환
@@ -82,12 +98,35 @@ public class LocationController {
                 return l;
             }).toList();
 
+            // 분석 로그 DB 저장
+            if (token != null && token.startsWith("Bearer ")) {
+                try {
+                    String jwt = token.replace("Bearer ", "");
+                    String username = jwtTokenProvider.getUsernameFromToken(jwt);
+                    User user = userRepository.findByUsername(username).orElse(null);
+                    if (user != null) {
+                        AnalysisLog log = new AnalysisLog();
+                        log.setUserId(user.getId());
+                        log.setReqLat(latitude);
+                        log.setReqLng(longitude);
+                        log.setAddress(address);
+                        log.setRiskLevel(riskLevel);
+                        log.setProbability(probability);
+                        log.setReasoning(reasoning);
+                        log.setLineColor("없음");
+                        log.setResult("위치 기반 분석 완료");
+                        analysisLogRepository.save(log);
+                    }
+                } catch (Exception ignored) {}
+            }
+
             Map<String, Object> data = new HashMap<>();
             data.put("latitude", latitude);
             data.put("longitude", longitude);
             data.put("address", address);
             data.put("riskLevel", riskLevel);
             data.put("probability", probability);
+            data.put("reasoning", reasoning);
             data.put("nearbyZones", zoneList);
             data.put("nearbyLots", lotList);
 

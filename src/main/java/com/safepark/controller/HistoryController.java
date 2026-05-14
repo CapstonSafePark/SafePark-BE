@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -98,6 +99,7 @@ public class HistoryController {
      * 분석 이력 삭제
      * DELETE /api/history/{historyId}
      */
+    @Transactional
     @DeleteMapping("/{historyId}")
     public ResponseEntity<?> deleteHistory(
             @RequestHeader("Authorization") String token,
@@ -125,6 +127,7 @@ public class HistoryController {
      * 전체 분석 이력 삭제
      * DELETE /api/history/all
      */
+    @Transactional
     @DeleteMapping("/all")
     public ResponseEntity<?> deleteAllHistory(@RequestHeader("Authorization") String token) {
         try {
