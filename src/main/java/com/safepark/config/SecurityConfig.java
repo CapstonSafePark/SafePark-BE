@@ -34,6 +34,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/parking-lots/**").permitAll()
+                        .requestMatchers("/uploads/**").permitAll()  // 업로드된 분석 이미지
                         .requestMatchers("/error").permitAll()  // ⭐⭐⭐ 핵심!
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()

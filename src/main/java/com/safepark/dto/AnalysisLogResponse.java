@@ -71,7 +71,7 @@ public class AnalysisLogResponse {
         }
 
         // 분석 결과
-        response.setImagePath(log.getImagePath());
+        response.setImagePath(toImageUrl(log.getImagePath()));
         response.setLineColor(log.getLineColor());
         response.setProbability(log.getProbability());
         response.setRiskLevel(log.getRiskLevel());
@@ -94,7 +94,7 @@ public class AnalysisLogResponse {
         response.setReqLat(log.getReqLat());
         response.setReqLng(log.getReqLng());
         response.setAddress(log.getAddress());
-        response.setImagePath(log.getImagePath());
+        response.setImagePath(toImageUrl(log.getImagePath()));
         response.setProbability(log.getProbability());
         response.setRiskLevel(log.getRiskLevel());
         response.setReasoning(log.getReasoning());
@@ -102,5 +102,26 @@ public class AnalysisLogResponse {
         response.setCreatedAt(log.getCreatedAt());
 
         return response;
+    }
+
+    /**
+     * 절대경로(OS별 구분자 포함)를 정적 리소스 URL로 변환
+     * 예) C:/.../uploads/analysis/xxx.jpg -> /uploads/analysis/xxx.jpg
+     */
+    private static String toImageUrl(String imagePath) {
+        if (imagePath == null) return null;
+        // 백슬래시 -> 슬래시
+        String normalized = imagePath.replace('\\', '/');
+        // uploads 이후 경로만 추출
+        int idx = normalized.indexOf("/uploads/");
+        if (idx >= 0) {
+            return normalized.substring(idx);
+        }
+        // "uploads/"로 시작하는 상대경로인 경우
+        int relIdx = normalized.indexOf("uploads/");
+        if (relIdx >= 0) {
+            return "/" + normalized.substring(relIdx);
+        }
+        return imagePath;
     }
 }
