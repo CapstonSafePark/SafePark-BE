@@ -34,17 +34,23 @@ public class ParkingCheckService {
         }
 
         List<NearbyParkingLotResponse> nearbyParkingLots = List.of(
-                        new NearbyParkingLotResponse(1L, "의왕역 공영주차장", "경기도 의왕시 부곡중앙남3길 2",
-                                37.3203, 126.9481, 1000, false,
-                                DistanceUtils.calculateDistanceKm(lat, lng, 37.3203, 126.9481)),
+                        NearbyParkingLotResponse.builder()
+                                .id(1L).lotName("의왕역 공영주차장").address("경기도 의왕시 부곡중앙남3길 2")
+                                .lat(37.3203).lng(126.9481).lotPrice(1000).freeYn(false)
+                                .distanceKm(DistanceUtils.calculateDistanceKm(lat, lng, 37.3203, 126.9481))
+                                .source("DB").build(),
 
-                        new NearbyParkingLotResponse(2L, "오전동 임시주차장", "경기도 의왕시 오전동 123-4",
-                                37.3275, 126.9682, 0, true,
-                                DistanceUtils.calculateDistanceKm(lat, lng, 37.3275, 126.9682)),
+                        NearbyParkingLotResponse.builder()
+                                .id(2L).lotName("오전동 임시주차장").address("경기도 의왕시 오전동 123-4")
+                                .lat(37.3275).lng(126.9682).lotPrice(0).freeYn(true)
+                                .distanceKm(DistanceUtils.calculateDistanceKm(lat, lng, 37.3275, 126.9682))
+                                .source("DB").build(),
 
-                        new NearbyParkingLotResponse(3L, "내손동 공영주차장", "경기도 의왕시 내손동 456-7",
-                                37.3791, 126.9804, 500, false,
-                                DistanceUtils.calculateDistanceKm(lat, lng, 37.3791, 126.9804))
+                        NearbyParkingLotResponse.builder()
+                                .id(3L).lotName("내손동 공영주차장").address("경기도 의왕시 내손동 456-7")
+                                .lat(37.3791).lng(126.9804).lotPrice(500).freeYn(false)
+                                .distanceKm(DistanceUtils.calculateDistanceKm(lat, lng, 37.3791, 126.9804))
+                                .source("DB").build()
                 )
                 .stream()
                 .sorted(Comparator.comparing(NearbyParkingLotResponse::getDistanceKm))

@@ -51,6 +51,15 @@ public class ParkingLot {
     @Column(name = "available_spaces")
     private Integer availableSpaces;  // 추가: 현재 가능 면수
 
+    @Column(name = "fee_unit")
+    private Integer feeUnit;  // 기본 주차 시간(분) e.g. 30
+
+    @Column(name = "add_unit_time")
+    private Integer addUnitTime;  // 추가 단위 시간(분) e.g. 5
+
+    @Column(name = "add_unit_price")
+    private Integer addUnitPrice;  // 추가 요금(원) e.g. 50
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

@@ -1,5 +1,14 @@
 package com.safepark.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class NearbyParkingLotResponse {
 
     private Long id;
@@ -9,57 +18,13 @@ public class NearbyParkingLotResponse {
     private Double lng;
     private Integer lotPrice;
     private Boolean freeYn;
+    private String operatingHours;
+    private String parkingFeeDesc;
+    private Integer totalSpaces;
+    private Integer availableSpots;
     private Double distanceKm;
-
-    public NearbyParkingLotResponse(
-            Long id,
-            String lotName,
-            String address,
-            Double lat,
-            Double lng,
-            Integer lotPrice,
-            Boolean freeYn,
-            Double distanceKm
-    ) {
-        this.id = id;
-        this.lotName = lotName;
-        this.address = address;
-        this.lat = lat;
-        this.lng = lng;
-        this.lotPrice = lotPrice;
-        this.freeYn = freeYn;
-        this.distanceKm = distanceKm;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public String getLotName() {
-        return lotName;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public Double getLat() {
-        return lat;
-    }
-
-    public Double getLng() {
-        return lng;
-    }
-
-    public Integer getLotPrice() {
-        return lotPrice;
-    }
-
-    public Boolean getFreeYn() {
-        return freeYn;
-    }
-
-    public Double getDistanceKm() {
-        return distanceKm;
-    }
+    private String source; // "DB" or "의왕시"
+    private Integer feeUnit;      // 기본 주차 시간(분)
+    private Integer addUnitTime;  // 추가 단위 시간(분)
+    private Integer addUnitPrice; // 추가 요금(원)
 }

@@ -9,6 +9,7 @@ import com.safepark.entity.User;
 import com.safepark.repository.AnalysisLogRepository;
 import com.safepark.repository.ParkingLotRepository;
 import com.safepark.repository.UserRepository;
+import com.safepark.service.ParkingFeeUpdateService;
 import com.safepark.service.ParkingLotService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class AdminController {
     private final AnalysisLogRepository analysisLogRepository;
     private final ParkingLotRepository parkingLotRepository;
     private final ParkingLotService parkingLotService;
+    private final ParkingFeeUpdateService parkingFeeUpdateService;
 
     // 전체 사용자 목록 조회 - Pagination + 검색
     @GetMapping("/users")
@@ -151,5 +153,17 @@ public class AdminController {
     public ResponseEntity<?> deleteParkingLot(@PathVariable Long id) {
         parkingLotService.deleteParkingLot(id);
         return ResponseEntity.ok(new ApiResponse<>(true, "주차장이 성공적으로 삭제되었습니다"));
+    }
+
+    // 경기도 주차장 요금 일괄 업데이트 (공공데이터 API 기반)
+    @PostMapping("/update-parking-fees")
+    public ResponseEntity<?> updateParkingFees() {
+        try {
+            Map<String, Integer> result = parkingFeeUpdateService.updateAllFees();
+            return ResponseEntity.ok(new ApiResponse<>(true, result));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(new ApiResponse<>(false, "요금 업데이트 실패: " + e.getMessage()));
+        }
     }
 }
