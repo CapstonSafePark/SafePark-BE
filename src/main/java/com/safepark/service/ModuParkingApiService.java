@@ -1,5 +1,6 @@
 package com.safepark.service;
 
+import com.safepark.dto.ModuTicketDto;
 import com.safepark.dto.NearbyParkingLotResponse;
 import com.safepark.util.DistanceUtils;
 import com.safepark.util.GeohashUtils;
@@ -10,6 +11,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URI;
 import java.util.*;
 
 /**
@@ -32,7 +34,8 @@ public class ModuParkingApiService {
 
     private static final String MODU_API_BASE = "https://api.modu.cloud";
     private static final String MODU_PINS_URL = MODU_API_BASE + "/poi/pins";
-private static final int PRECISION = 6;
+    private static final String MODU_TICKETS_URL = MODU_API_BASE + "/poi/available-tickets";
+    private static final int PRECISION = 6;
 
     @Value("${kakao.rest.api.key}")
     private String kakaoApiKey;
@@ -49,6 +52,9 @@ private static final int PRECISION = 6;
 
         try {
             List<String> geohashes = buildNeighborGeohashes(lat, lng);
+
+            // available-tickets API로 티켓 정보 미리 조회 (seq → tickets 맵)
+            Map<Integer, List<ModuTicketDto>> ticketsMap = fetchTicketsMap(geohashes);
 
             HttpHeaders headers = buildHeaders();
             HttpEntity<Void> entity = new HttpEntity<>(headers);
@@ -67,7 +73,13 @@ private static final int PRECISION = 6;
                             if (seq != null && seq > 0 && !seenIds.add(seq)) continue;
 
                             NearbyParkingLotResponse parsed = parseLot(lot, lat, lng, radiusKm);
-                            if (parsed != null) result.add(parsed);
+                            if (parsed != null) {
+                                // 티켓 정보 주입
+                                if (seq != null && ticketsMap.containsKey(seq)) {
+                                    parsed.setTickets(ticketsMap.get(seq));
+                                }
+                                result.add(parsed);
+                            }
                         }
                     }
                 } catch (Exception e) {
@@ -76,12 +88,85 @@ private static final int PRECISION = 6;
             }
 
             result.sort(Comparator.comparingDouble(NearbyParkingLotResponse::getDistanceKm));
-            log.info("모두의주차장 API: 반경 {}km 내 주차장 {}개 조회됨 ({}개 셀 쿼리)", radiusKm, result.size(), geohashes.size());
+            long withTickets = result.stream().filter(r -> r.getTickets() != null && !r.getTickets().isEmpty()).count();
+            log.info("모두의주차장 API: 반경 {}km 내 주차장 {}개 (티켓 있는 곳: {}개)", radiusKm, result.size(), withTickets);
 
         } catch (Exception e) {
             log.error("모두의주차장 API 호출 실패: {}", e.getMessage());
         }
         return result;
+    }
+
+    /**
+     * available-tickets API 호출 → seq별 티켓 목록 맵 반환
+     */
+    @SuppressWarnings("unchecked")
+    private Map<Integer, List<ModuTicketDto>> fetchTicketsMap(List<String> geohashes) {
+        Map<Integer, List<ModuTicketDto>> map = new HashMap<>();
+        try {
+            String geohashParam = String.join(",", geohashes);
+            // URI.create() 로 쉼표 인코딩 방지
+            URI uri = URI.create(MODU_TICKETS_URL + "?geohash=" + geohashParam);
+
+            HttpHeaders headers = buildHeaders();
+            headers.set("Referer", "https://app.modu.kr/");
+            headers.set("Origin", "https://app.modu.kr");
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<Map> response = restTemplate.exchange(uri, HttpMethod.GET, entity, Map.class);
+            if (response.getStatusCode() != HttpStatus.OK || response.getBody() == null) return map;
+
+            Object dataObj = response.getBody().get("data");
+            if (!(dataObj instanceof List)) return map;
+
+            for (Object cellObj : (List<?>) dataObj) {
+                if (!(cellObj instanceof Map)) continue;
+                Object lotsObj = ((Map<?, ?>) cellObj).get("parkingLots");
+                if (!(lotsObj instanceof List)) continue;
+
+                for (Object lotObj : (List<?>) lotsObj) {
+                    if (!(lotObj instanceof Map)) continue;
+                    Map<String, Object> lot = (Map<String, Object>) lotObj;
+                    Integer seq = toInteger(lot.get("seq"));
+                    if (seq == null || seq <= 0) continue;
+
+                    Object ticketsObj = lot.get("tickets");
+                    if (!(ticketsObj instanceof List)) continue;
+
+                    List<ModuTicketDto> tickets = new ArrayList<>();
+                    for (Object ticketObj : (List<?>) ticketsObj) {
+                        if (!(ticketObj instanceof Map)) continue;
+                        Map<String, Object> t = (Map<String, Object>) ticketObj;
+                        String ticketName = getString(t, "name");
+                        if (!isUsefulTicket(ticketName)) continue; // 필터링
+                        tickets.add(ModuTicketDto.builder()
+                                .name(ticketName)
+                                .price(toIntegerNullable(t.get("price")))
+                                .usagePeriodLabel(getString(t, "usagePeriodLabel"))
+                                .build());
+                    }
+                    if (!tickets.isEmpty()) map.put(seq, tickets);
+                }
+            }
+            log.info("available-tickets API: {}개 주차장 티켓 조회됨", map.size());
+        } catch (Exception e) {
+            log.warn("available-tickets API 호출 실패 (티켓 없이 진행): {}", e.getMessage());
+        }
+        return map;
+    }
+
+    /**
+     * 가격 참고용 티켓만 포함 (종일권, 당일권, 월정기권)
+     * 세차권, 단기권(N시간권), 연박권 등은 제외
+     */
+    private boolean isUsefulTicket(String name) {
+        if (name == null) return false;
+        // 포함: 종일권, 당일권, 월정기권
+        boolean included = name.contains("종일권") || name.contains("당일권") || name.contains("월정기권");
+        // 제외: 세차권, N시간권, 연박권, 실속패스, 기간권
+        boolean excluded = name.contains("세차권") || name.matches(".*\\d+시간권.*")
+                || name.contains("연박권") || name.contains("실속패스") || name.contains("실속 ");
+        return included && !excluded;
     }
 
     /**

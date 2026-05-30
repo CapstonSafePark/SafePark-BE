@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -38,4 +40,7 @@ public class NearbyParkingLotResponse {
     private Integer initialFreeMinutes; // 초기무료 시간(분)
     private Integer dailyMaxFee;        // 1일 최대요금(원)
     private String lotType;             // 민영/공영/노상 등
+
+    // 모두의주차장 티켓 목록 (종일권, 주간권 등)
+    private List<ModuTicketDto> tickets;
 }
