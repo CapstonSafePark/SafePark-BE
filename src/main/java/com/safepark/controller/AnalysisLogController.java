@@ -42,12 +42,12 @@ public class AnalysisLogController {
         try {
             User user = getUserFromToken(token);
 
-            // 이미지 저장 (절대경로 사용)
+            // 이미지 저장 (절대경로로 저장, 상대경로를 DB/응답에 사용)
             String uploadDir = System.getProperty("user.dir") + "/uploads/analysis/";
             new File(uploadDir).mkdirs();
             String fileName = System.currentTimeMillis() + "_" + image.getOriginalFilename();
-            String imagePath = uploadDir + fileName;
-            File savedFile = new File(imagePath);
+            File savedFile = new File(uploadDir + fileName);
+            String imagePath = "/uploads/analysis/" + fileName; // 상대경로
             image.transferTo(savedFile);
 
             // DS 모델에 이미지 분석 요청
