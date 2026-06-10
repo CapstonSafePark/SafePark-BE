@@ -78,6 +78,12 @@ public class AnalysisLog {
     @Column(columnDefinition = "TEXT")
     private String reasoning;  // AI 판단 근거
 
+    @Column(name = "start_time", length = 10)
+    private String startTime;  // 단속 시작 시각 (예: 07:00)
+
+    @Column(name = "end_time", length = 10)
+    private String endTime;    // 단속 종료 시각 (예: 22:00)
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

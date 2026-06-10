@@ -37,6 +37,8 @@ public class AnalysisLogResponse {
     private Integer probability;  // 0~100 과태료 확률
     private String riskLevel;  // LOW/MEDIUM/HIGH
     private String reasoning;  // AI 판단 근거
+    private String startTime;  // 단속 시작 시각
+    private String endTime;    // 단속 종료 시각
 
     private LocalDateTime createdAt;
 
@@ -76,6 +78,8 @@ public class AnalysisLogResponse {
         response.setProbability(log.getProbability());
         response.setRiskLevel(log.getRiskLevel());
         response.setReasoning(log.getReasoning());
+        response.setStartTime(log.getStartTime());
+        response.setEndTime(log.getEndTime());
         response.setCreatedAt(log.getCreatedAt());
 
         return response;
@@ -99,6 +103,8 @@ public class AnalysisLogResponse {
         response.setRiskLevel(log.getRiskLevel());
         response.setReasoning(log.getReasoning());
         response.setLineColor(log.getLineColor());
+        response.setStartTime(log.getStartTime());
+        response.setEndTime(log.getEndTime());
         response.setCreatedAt(log.getCreatedAt());
 
         return response;

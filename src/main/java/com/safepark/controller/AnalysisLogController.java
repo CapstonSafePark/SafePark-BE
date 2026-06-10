@@ -2,8 +2,10 @@ package com.safepark.controller;
 
 import com.safepark.dto.AnalysisLogResponse;
 import com.safepark.entity.AnalysisLog;
+import com.safepark.entity.CrackZone;
 import com.safepark.entity.User;
 import com.safepark.repository.AnalysisLogRepository;
+import com.safepark.repository.CrackZoneRepository;
 import com.safepark.repository.UserRepository;
 import com.safepark.security.JwtTokenProvider;
 import com.safepark.service.DsAnalysisService;
@@ -23,6 +25,7 @@ import java.util.Map;
 public class AnalysisLogController {
 
     private final AnalysisLogRepository analysisLogRepository;
+    private final CrackZoneRepository crackZoneRepository;
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final DsAnalysisService dsAnalysisService;
@@ -70,21 +73,35 @@ public class AnalysisLogController {
             log.setReasoning(reasoning);
             log.setResult("분석 완료");
 
+            // 가장 가까운 단속구역 조회 (반경 0.1km = 100m)
+            List<CrackZone> nearbyZones = crackZoneRepository.findNearbyZones(latitude, longitude, 0.1);
+            if (!nearbyZones.isEmpty()) {
+                CrackZone nearest = nearbyZones.get(0);
+                log.setZoneId(nearest.getId());
+                log.setZoneName(nearest.getZoneName());
+                log.setZoneType(nearest.getZoneType());
+                log.setStartTime(nearest.getStartTime());
+                log.setEndTime(nearest.getEndTime());
+            }
+
             AnalysisLog saved = analysisLogRepository.save(log);
 
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "data", Map.of(
-                            "analysisId", saved.getId(),
-                            "imagePath", saved.getImagePath(),
-                            "probability", saved.getProbability(),
-                            "riskLevel", saved.getRiskLevel(),
-                            "lineColor", saved.getLineColor(),
-                            "reasoning", saved.getReasoning(),
-                            "status", "분석 완료",
-                            "message", "이미지가 업로드되었습니다. 분석 결과를 확인하세요."
-                    )
-            ));
+            Map<String, Object> data = new HashMap<>();
+            data.put("analysisId", saved.getId());
+            data.put("imagePath", saved.getImagePath());
+            data.put("probability", saved.getProbability());
+            data.put("riskLevel", saved.getRiskLevel());
+            data.put("lineColor", saved.getLineColor());
+            data.put("reasoning", saved.getReasoning());
+            data.put("startTime", saved.getStartTime());
+            data.put("endTime", saved.getEndTime());
+            data.put("zoneId", saved.getZoneId());
+            data.put("zoneName", saved.getZoneName());
+            data.put("zoneType", saved.getZoneType());
+            data.put("status", "분석 완료");
+            data.put("message", "이미지가 업로드되었습니다. 분석 결과를 확인하세요.");
+
+            return ResponseEntity.ok(Map.of("success", true, "data", data));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
         }
