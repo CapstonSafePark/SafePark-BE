@@ -9,6 +9,7 @@ import com.safepark.repository.CrackZoneRepository;
 import com.safepark.repository.UserRepository;
 import com.safepark.security.JwtTokenProvider;
 import com.safepark.service.DsAnalysisService;
+import com.safepark.util.RiskCalculator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -57,26 +58,27 @@ public class AnalysisLogController {
             Map<String, Object> dsResult = dsAnalysisService.analyzeImage(savedFile);
 
             String lineColor = (String) dsResult.get("lineColor");
-            String riskLevel = (String) dsResult.get("riskLevel");
-            int probability = (int) dsResult.get("probability");
-            String reasoning = (String) dsResult.get("reasoning");
 
-            // 분석 로그 생성 (DS 모델 분석 결과 반영)
+            // 가장 가까운 단속구역 조회 (반경 0.1km = 100m), 우선순위: 스쿨존 > 버스정류장 > 주정차금지 > CCTV
+            List<CrackZone> nearbyZones = crackZoneRepository.findNearbyZones(latitude, longitude, 0.1);
+            CrackZone nearest = nearbyZones.isEmpty() ? null : selectPriorityZone(nearbyZones);
+
+            // lineColor + zone + 현재 시각으로 최종 위험도 계산
+            RiskCalculator.RiskResult risk = RiskCalculator.calculateWithLineColor(lineColor, nearest);
+
+            // 분석 로그 생성
             AnalysisLog log = new AnalysisLog();
             log.setUserId(user.getId());
             log.setReqLat(latitude);
             log.setReqLng(longitude);
             log.setImagePath(imagePath);
-            log.setRiskLevel(riskLevel);
-            log.setProbability(probability);
+            log.setRiskLevel(risk.riskLevel);
+            log.setProbability(risk.probability);
             log.setLineColor(lineColor);
-            log.setReasoning(reasoning);
+            log.setReasoning(risk.reasoning);
             log.setResult("분석 완료");
 
-            // 가장 가까운 단속구역 조회 (반경 0.1km = 100m)
-            List<CrackZone> nearbyZones = crackZoneRepository.findNearbyZones(latitude, longitude, 0.1);
-            if (!nearbyZones.isEmpty()) {
-                CrackZone nearest = nearbyZones.get(0);
+            if (nearest != null) {
                 log.setZoneId(nearest.getId());
                 log.setZoneName(nearest.getZoneName());
                 log.setZoneType(nearest.getZoneType());
@@ -181,5 +183,20 @@ public class AnalysisLogController {
         String username = jwtTokenProvider.getUsernameFromToken(jwt);
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
+    }
+
+    /**
+     * 반경 내 zone 중 위험도 우선순위가 높은 zone 선택
+     * 스쿨존 > 버스정류장 > 주정차금지 > CCTV > 거리순 첫 번째
+     */
+    private CrackZone selectPriorityZone(List<CrackZone> zones) {
+        java.util.Map<String, Integer> priority = new java.util.HashMap<>();
+        priority.put("스쿨존", 1);
+        priority.put("버스정류장", 2);
+        priority.put("주정차금지", 3);
+        priority.put("CCTV", 4);
+        return zones.stream()
+                .min(java.util.Comparator.comparingInt(z -> priority.getOrDefault(z.getZoneType(), 99)))
+                .orElse(zones.get(0));
     }
 }

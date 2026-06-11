@@ -9,6 +9,7 @@ import com.safepark.repository.CrackZoneRepository;
 import com.safepark.repository.ParkingLotRepository;
 import com.safepark.repository.UserRepository;
 import com.safepark.security.JwtTokenProvider;
+import com.safepark.util.RiskCalculator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -48,28 +49,12 @@ public class LocationController {
             // 반경 0.5km 내 주차장 조회
             List<ParkingLot> nearbyLots = parkingLotRepository.findNearbyLots(latitude, longitude, 0.5);
 
-            // 위험도 계산
-            String riskLevel;
-            int probability;
-            String reasoning;
-            if (!nearbyZones.isEmpty()) {
-                CrackZone closestZone = nearbyZones.get(0);
-                if ("스쿨존".equals(closestZone.getZoneType()) || "버스정류장".equals(closestZone.getZoneType())) {
-                    riskLevel = "HIGH";
-                    probability = 90;
-                    reasoning = String.format("반경 100m 내 %s(%s) 단속구역이 존재합니다. 과태료 확률이 매우 높습니다.",
-                            closestZone.getZoneType(), closestZone.getZoneName());
-                } else {
-                    riskLevel = "MEDIUM";
-                    probability = 60;
-                    reasoning = String.format("반경 100m 내 %s(%s) 단속구역이 존재합니다. 주의가 필요합니다.",
-                            closestZone.getZoneType(), closestZone.getZoneName());
-                }
-            } else {
-                riskLevel = "LOW";
-                probability = 10;
-                reasoning = "반경 100m 내 단속구역이 확인되지 않았습니다. 주차 가능성이 높습니다.";
-            }
+            // zone + 현재 시각으로 위험도 계산 (우선순위: 스쿨존 > 버스정류장 > 주정차금지 > CCTV > 거리순)
+            CrackZone closestZone = nearbyZones.isEmpty() ? null : selectPriorityZone(nearbyZones);
+            RiskCalculator.RiskResult risk = RiskCalculator.calculateWithZoneOnly(closestZone);
+            String riskLevel = risk.riskLevel;
+            int probability = risk.probability;
+            String reasoning = risk.reasoning;
 
             // 단속구역 정보 변환
             List<Map<String, Object>> zoneList = nearbyZones.stream().map(zone -> {
@@ -127,6 +112,9 @@ public class LocationController {
             data.put("riskLevel", riskLevel);
             data.put("probability", probability);
             data.put("reasoning", reasoning);
+            data.put("zoneType", closestZone != null ? closestZone.getZoneType() : null);
+            data.put("startTime", closestZone != null ? closestZone.getStartTime() : null);
+            data.put("endTime", closestZone != null ? closestZone.getEndTime() : null);
             data.put("nearbyZones", zoneList);
             data.put("nearbyLots", lotList);
 
@@ -134,5 +122,20 @@ public class LocationController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
         }
+    }
+
+    /**
+     * 반경 내 zone 중 위험도 우선순위가 높은 zone 선택
+     * 스쿨존 > 버스정류장 > 주정차금지 > CCTV > 거리순 첫 번째
+     */
+    private CrackZone selectPriorityZone(List<CrackZone> zones) {
+        java.util.Map<String, Integer> priority = new java.util.HashMap<>();
+        priority.put("스쿨존", 1);
+        priority.put("버스정류장", 2);
+        priority.put("주정차금지", 3);
+        priority.put("CCTV", 4);
+        return zones.stream()
+                .min(java.util.Comparator.comparingInt(z -> priority.getOrDefault(z.getZoneType(), 99)))
+                .orElse(zones.get(0));
     }
 }
